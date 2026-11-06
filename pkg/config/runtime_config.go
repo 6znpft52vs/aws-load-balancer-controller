@@ -27,6 +27,8 @@ const (
 	flagEnableLeaderElection    = "enable-leader-election"
 	flagLeaderElectionID        = "leader-election-id"
 	flagLeaderElectionNamespace = "leader-election-namespace"
+	flagLeaseDuration           = "lease-duration"
+	flagRenewDeadline           = "renew-deadline"
 	flagWatchNamespace          = "watch-namespace"
 	flagSyncPeriod              = "sync-period"
 	flagKubeconfig              = "kubeconfig"
@@ -38,6 +40,8 @@ const (
 	defaultKubeconfig              = ""
 	defaultLeaderElectionID        = "aws-load-balancer-controller-leader"
 	defaultLeaderElectionNamespace = ""
+	defaultLeaseDuration           = 15 * time.Second
+	defaultRenewDeadline           = 10 * time.Second
 	defaultWatchNamespace          = corev1.NamespaceAll
 	defaultMetricsAddr             = ":8080"
 	defaultHealthProbeBindAddress  = ":61779"
@@ -64,6 +68,8 @@ type RuntimeConfig struct {
 	EnableLeaderElection    bool
 	LeaderElectionID        string
 	LeaderElectionNamespace string
+	LeaseDuration           time.Duration
+	RenewDeadline           time.Duration
 	WatchNamespace          string
 	SyncPeriod              time.Duration
 	WebhookCertDir          string
@@ -89,6 +95,10 @@ func (c *RuntimeConfig) BindFlags(fs *pflag.FlagSet) {
 		"Name of the leader election ID to use for this controller")
 	fs.StringVar(&c.LeaderElectionNamespace, flagLeaderElectionNamespace, defaultLeaderElectionNamespace,
 		"Name of the leader election ID to use for this controller")
+	fs.DurationVar(&c.LeaseDuration, flagLeaseDuration, defaultLeaseDuration,
+		"The duration that non-leader ccontrollers will wait to force acquire leadership")
+	fs.DurationVar(&c.RenewDeadline, flagRenewDeadline, defaultRenewDeadline,
+		"The duration that the acting leader controller will retry refreshing its lease before giving up")
 	fs.StringVar(&c.WatchNamespace, flagWatchNamespace, defaultWatchNamespace,
 		"Namespace the controller watches for updates to Kubernetes objects, If empty, all namespaces are watched.")
 	fs.DurationVar(&c.SyncPeriod, flagSyncPeriod, defaultSyncPeriod,
@@ -161,6 +171,8 @@ func BuildRuntimeOptions(rtCfg RuntimeConfig, scheme *runtime.Scheme) (ctrl.Opti
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaderElectionID:           rtCfg.LeaderElectionID,
 		LeaderElectionNamespace:    rtCfg.LeaderElectionNamespace,
+		LeaseDuration: 				&rtCfg.LeaseDuration,
+		RenewDeadline: 				&rtCfg.RenewDeadline,
 		Cache: cache.Options{
 			SyncPeriod: &rtCfg.SyncPeriod,
 		},
